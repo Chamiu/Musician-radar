@@ -1,0 +1,38 @@
+name: iTMS New Release Radar
+
+on:
+  schedule:
+    # 日本時間 毎日 08:00 = UTC 23:00（GitHubのcronはUTC専属）
+    - cron: '0 23 * * *'
+  workflow_dispatch:   # ウェブ画面から手動発火できる口✨
+
+permissions:
+  contents: write
+
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: jqを召喚
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: 実行権限を付与
+        run: chmod +x radar_itms.sh
+
+      - name: レーダー発火（ iTMS版を直呼び）
+        run: ./radar_itms.sh
+
+      - name: ログをコミット＆push（新譜があった日だけ）
+        run: |
+          if [ -n "$(git status --porcelain log/)" ]; then
+            git config user.name "radar-bot"
+            git config user.email "actions@github.com"
+            git add log/
+            git commit -m "🆕 radar: $(date -u '+%Y-%m-%d')"
+            git push
+          else
+            echo "※本日の新譜は検知されなかったにゃ（コミットなし）"
+          fi
