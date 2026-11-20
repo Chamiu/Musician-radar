@@ -25,14 +25,15 @@ jobs:
       - name: レーダー発火（ iTMS版を直呼び）
         run: ./radar_itms.sh
 
-      - name: ログをコミット＆push（新譜があった日だけ）
+      - name: コミット＆push（新譜があった日だけ）
+        if: steps.hit.outputs.yes == 'true'
         run: |
-          if [ -n "$(git status --porcelain log/)" ]; then
-            git config user.name "radar-bot"
-            git config user.email "actions@github.com"
-            git add log/
-            git commit -m "🆕 radar: $(date -u '+%Y-%m-%d')"
-            git push
+          git config user.name "radar-bot"
+          git config user.email "actions@github.com"
+          git add log/
+          BODY=$(awk '/^- /{print}' "${{ steps.hit.outputs.file }}" | head -n 40)
+          git commit -m "🆕 radar: $(date '+%Y-%m-%d')" -m "$BODY"
+          git push
           else
             echo "※本日の新譜は検知されなかったにゃ（コミットなし）"
           fi
