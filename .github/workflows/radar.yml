@@ -25,15 +25,27 @@ jobs:
       - name: レーダー発火（ iTMS版を直呼び）
         run: ./radar_itms.sh
 
-      - name: コミット＆push（新譜があった日だけ）
-        if: steps.hit.outputs.yes == 'true'
+      - name: ログをコミット＆push（新譜があった日だけ）
         run: |
+          if [ -z "$(git status --porcelain log/)" ]; then
+            echo "※本日の新譜は検知されなかったにゃ（コミットなし）"
+            exit 0
+          fi
+
+          F=$(git status --porcelain log/ | awk '{print $2}' | head -n1)
+          N=$(awk '/^- /' "$F" | wc -l | tr -d ' ')
+
+          ALL=$(awk '/^- |^  - /{print}' "$F")
+          [ -z "$ALL" ] && ALL="(詳細は ${F} を参照にゃ)"
+          BODY=$(printf '%s\n' "$ALL" | head -n 40)
+          LINES=$(printf '%s\n' "$ALL" | wc -l | tr -d ' ')
+          if [ "$LINES" -gt 40 ]; then
+            BODY="${BODY}
+          …（以下略 / 全 ${LINES}行。全文は ${F}）"
+          fi
+
           git config user.name "radar-bot"
           git config user.email "actions@github.com"
           git add log/
-          BODY=$(awk '/^- /{print}' "${{ steps.hit.outputs.file }}" | head -n 40)
-          git commit -m "🆕 radar: $(date '+%Y-%m-%d')" -m "$BODY"
+          git commit -m "🆕 radar: $(date -u '+%Y-%m-%d') / ${N}件" -m "$BODY"
           git push
-          else
-            echo "※本日の新譜は検知されなかったにゃ（コミットなし）"
-          fi
